@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Pere'z Burger" />
+  <meta name="theme-color" content="#C8102E" />
+  <link rel="apple-touch-icon" href="logo.png?v=2" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Pere'z Burger · Panel de Control</title>
+  <link rel="icon" type="image/png" href="logo-rojo.png?v=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=3.6" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body class="is-loading">
+
+<!-- ═══════════════ ICONOS ═══════════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-cierre" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5.5 6.5-5.5s5.7 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.8 3.1 2.6 3.5 5.2"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M5 7h14"/><path d="m5 7-3 7a3.5 3.5 0 0 0 6 0zM19 7l-3 7a3.5 3.5 0 0 0 6 0z"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6 15h4"/></symbol>
+    <symbol id="i-pie" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.4 6.4"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+    <symbol id="i-burger" viewBox="0 0 24 24"><path d="M4 11a8 8 0 0 1 16 0z"/><path d="M3 14.5h18"/><path d="M4 18h16v.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5M7 10l5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9.5v5M18 9.5v5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 6 .5l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2"/><path d="M14 10a4 4 0 0 0-6-.5l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2"/></symbol>
+    <symbol id="i-stock" viewBox="0 0 24 24"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></symbol>
+  </defs>
+</svg>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="login-screen">
+  <form class="login-card" id="login-form" autocomplete="on" novalidate>
+    <div class="login-brand"><img src="logo-rojo.png?v=1" alt="Pere'z Burger" /></div>
+    <div class="login-body">
+      <h1>Iniciar sesión</h1>
+      <p class="sub">Ingresá con tu usuario para acceder al panel.</p>
+      <div class="login-error" id="login-error"></div>
+      <div class="form-group">
+        <label for="login-user">Usuario</label>
+        <input type="text" id="login-user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ej: juan" required />
+      </div>
+      <div class="form-group">
+        <label for="login-pass">Contraseña</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-pass" autocomplete="current-password" required />
+          <button type="button" class="pw-toggle" id="login-pass-toggle" aria-label="Mostrar contraseña"><svg class="ic"><use href="#i-eye"/></svg></button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="login-submit">Ingresar</button>
+      <div class="login-foot"><svg class="ic ic-sm" style="vertical-align:-3px"><use href="#i-lock"/></svg> Acceso privado del equipo</div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="app">
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <nav id="sidebar" aria-label="Secciones">
+    <div class="brand">
+      <img src="logo-rojo.png?v=1" alt="Pere'z Burger" />
+    </div>
+
+    <div class="nav">
+      <span class="nav-section">Operación diaria</span>
+      <button class="nav-item" data-section="cierre"><svg class="ic"><use href="#i-cierre"/></svg>Cierre del día</button>
+      <button class="nav-item" data-section="dashboard"><svg class="ic"><use href="#i-dash"/></svg>Dashboard</button>
+      <button class="nav-item" data-section="stock"><svg class="ic"><use href="#i-stock"/></svg>Stock</button>
+
+      <span class="nav-section">Gastos y personal</span>
+      <button class="nav-item" data-section="gastosg"><svg class="ic"><use href="#i-box"/></svg>Gastos generales</button>
+      <button class="nav-item" data-section="gastosf"><svg class="ic"><use href="#i-receipt"/></svg>Gastos fijos</button>
+      <button class="nav-item" data-section="sueldos"><svg class="ic"><use href="#i-users"/></svg>Sueldos</button>
+
+      <span class="nav-section">Finanzas</span>
+      <button class="nav-item" data-section="balance"><svg class="ic"><use href="#i-scale"/></svg>Balance general</button>
+      <button class="nav-item" data-section="distribucion"><svg class="ic"><use href="#i-pie"/></svg>Distribución</button>
+      <button class="nav-item" data-section="fondocomun"><svg class="ic"><use href="#i-bank"/></svg>Fondo común</button>
+      <button class="nav-item" data-section="pagos"><svg class="ic"><use href="#i-card"/></svg>Formas de pago</button>
+
+      <span class="nav-section">Reportes</span>
+      <button class="nav-item" data-section="resumen"><svg class="ic"><use href="#i-trend"/></svg>Resumen del mes</button>
+      <button class="nav-item" data-section="ventas"><svg class="ic"><use href="#i-list"/></svg>Ventas por día</button>
+      <button class="nav-item" data-section="productos"><svg class="ic"><use href="#i-burger"/></svg>Productos</button>
+      <button class="nav-item" data-section="historial"><svg class="ic"><use href="#i-archive"/></svg>Historial de meses</button>
+
+      <span class="nav-section">Sistema</span>
+      <button class="nav-item" data-section="config"><svg class="ic"><use href="#i-settings"/></svg>Configuración</button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">·</div>
+        <div class="user-meta">
+          <div class="user-name" id="user-name">—</div>
+          <div class="user-role" id="user-role">—</div>
+        </div>
+        <button class="icon-btn" id="logout-btn" onclick="logout()" title="Cerrar sesión" aria-label="Cerrar sesión"><svg class="ic"><use href="#i-logout"/></svg></button>
+      </div>
+      <div class="version">v3.6 · Control mensual</div>
+    </div>
+  </nav>
+
+  <div id="main">
+    <header id="topbar">
+      <button id="hamburger" class="icon-btn" onclick="toggleSidebar()" aria-label="Menú"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <div class="topbar-titles">
+        <h2 id="topbar-title">Dashboard</h2>
+        <div id="topbar-sub">Cómo viene el mes de un vistazo</div>
+      </div>
+      <div class="topbar-right">
+        <span class="month-badge"><svg class="ic ic-sm"><use href="#i-calendar"/></svg><span id="current-month-badge">—</span></span>
+        <button class="sync-pill" id="sync-indicator" data-state="local" onclick="manualSync()" title="Estado de guardado">
+          <span class="sync-dot"></span><span class="sync-text">Local</span>
+        </button>
+        <div class="dropdown" id="more-menu">
+          <button class="icon-btn" onclick="toggleDropdown('more-menu', event)" aria-label="Más opciones"><svg class="ic"><use href="#i-more"/></svg></button>
+          <div class="dropdown-menu">
+            <button class="dropdown-item" onclick="exportCSV()"><svg class="ic"><use href="#i-file"/></svg>Exportar resumen (CSV)</button>
+            <button class="dropdown-item" onclick="exportJSON()"><svg class="ic"><use href="#i-download"/></svg>Descargar backup (JSON)</button>
+            <label class="dropdown-item ro-hide" style="cursor:pointer"><svg class="ic"><use href="#i-upload"/></svg>Restaurar backup…
+              <input type="file" accept=".json" style="display:none" onchange="importJSON(this)" /></label>
+            <div class="dropdown-sep"></div>
+            <button class="dropdown-item" onclick="manualSync()"><svg class="ic"><use href="#i-refresh"/></svg>Sincronizar ahora</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="readonly-banner"><svg class="ic"><use href="#i-eye"/></svg><span><strong>Modo vista</strong> — podés navegar pero no modificar datos.</span></div>
+    <div id="local-banner"><svg class="ic"><use href="#i-info"/></svg><span><strong>Modo local</strong> — los datos se guardan solo en este navegador. Configurá la nube en <code>config.js</code> para activar login y sincronización.</span></div>
+
+    <div id="content"><div class="content-inner">
+
+      <!-- ════════════ CIERRE DEL DÍA ════════════ -->
+      <section class="section" id="s-cierre">
+        <div class="grid-cierre">
+          <div class="panel" id="cierre-panel">
+            <div class="panel-header">
+              <span class="panel-title"><svg class="ic"><use href="#i-cierre"/></svg>Nuevo cierre</span>
+              <span class="badge badge-amber editing-badge"><svg class="ic ic-sm"><use href="#i-edit"/></svg>Editando cierre</span>
+            </div>
+            <div class="panel-body">
+              <input type="hidden" id="cierre-edit-fecha" value="" />
+              <div class="form-grid cols-2">
+                <div class="form-group">
+                  <label for="cierre-fecha">Fecha (calendario)</label>
+                  <input type="date" id="cierre-fecha" onchange="onCierreFechaChange()" />
+                </div>
+                <div class="form-group">
+                  <label for="cierre-dia">Día</label>
+                  <select id="cierre-dia"><option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option></select>
+                </div>
+              </div>
+
+              <div class="form-section-label">Productos vendidos</div>
+              <div class="prod-grid" id="cierre-productos-grid"></div>
+
+              <div class="form-section-label">Cobros del día</div>
+              <div id="cierre-pagos-grid"></div>
+
+              <div class="total-box">
+                <span class="total-box-label">Total del día</span>
+                <span id="cierre-total-display" class="total-amount">$0</span>
+              </div>
+
+              <button class="collapse-toggle" id="arqueo-toggle-btn" onclick="toggleArqueo()">
+                <svg class="ic ic-sm"><use href="#i-chevron"/></svg>Arqueo de caja <span class="text-muted small">(opcional)</span>
+              </button>
+              <div class="collapse-body" id="arqueo-body">
+                <div id="arqueo-rows"></div>
+                <div class="arqueo-total"><span>Total en efectivo</span><span id="arqueo-total-ars">$0</span></div>
+              </div>
+
+              <button class="btn btn-primary btn-block" onclick="saveCierre()"><svg class="ic"><use href="#i-check"/></svg>Guardar cierre del día</button>
+              <button class="btn btn-ghost btn-block" id="cierre-cancel-btn" style="margin-top:8px;display:none" onclick="resetCierreForm()">Cancelar edición</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title"><svg class="ic"><use href="#i-list"/></svg>Cierres del mes</span>
+              <span id="cierre-count-badge" class="badge badge-gray">0 días</span>
+            </div>
+            <div id="cierre-ultimos" style="max-height:720px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ DASHBOARD ════════════ -->
+      <section class="section" id="s-dashboard">
+        <div class="dash-hero" id="dash-hero"></div>
+        <div id="dash-stock-alert"></div>
+        <div class="kpi-grid six" id="kpi-grid"></div>
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Ventas por día</span></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="chart-ventas-dash"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Formas de pago</span></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="chart-pagos-dash"></canvas></div></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Balance rápido</span></div>
+            <div class="panel-body" id="dash-balance"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Distribución final</span></div>
+            <div class="panel-body" id="dash-dist"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ STOCK ════════════ -->
+      <section class="section" id="s-stock">
+        <div class="kpi-grid" id="stock-kpis"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><svg class="ic"><use href="#i-check"/></svg>Revisión de stock</span>
+            <div class="panel-actions">
+              <div class="form-group ro-hide" style="flex-direction:row;align-items:center;gap:8px">
+                <label for="stock-fecha" style="white-space:nowrap">Fecha</label>
+                <input type="date" id="stock-fecha" class="input" style="width:auto" onchange="renderStock()" />
+              </div>
+              <button class="btn btn-ghost btn-sm ro-hide" onclick="openStockProducto()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Producto</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <p class="form-hint" style="margin-bottom:14px">En el chequeo de la semana, tocá el estado de cada producto: <strong>OK</strong>, <strong>Flojo</strong> (queda poco) o <strong>Reponer</strong> (hay que comprar). Se guarda al instante.</p>
+            <div id="stock-list"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><svg class="ic"><use href="#i-alert"/></svg>Lista para reponer</span>
+            <button class="btn btn-ghost btn-sm" onclick="copiarListaReposicion()"><svg class="ic ic-sm"><use href="#i-file"/></svg>Copiar lista</button>
+          </div>
+          <div class="panel-body" id="stock-reponer"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><svg class="ic"><use href="#i-list"/></svg>Historial de revisiones</span>
+            <select id="stock-filtro" class="input" style="width:auto;min-width:180px" onchange="renderStock()" aria-label="Filtrar por producto"></select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Producto</th><th>Estado</th><th class="hide-sm">Nota</th><th></th></tr></thead>
+              <tbody id="stock-movs"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ VENTAS ════════════ -->
+      <section class="section" id="s-ventas">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Ventas por día</span>
+            <button class="btn btn-primary btn-sm" onclick="openAddVentaModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar día</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Día</th><th>Fecha</th><th class="r">Ventas</th><th class="r">Burgers</th><th class="hide-sm">Cobros</th><th class="r">% del mes</th><th></th></tr></thead>
+              <tbody id="ventas-tbody"></tbody>
+              <tfoot><tr id="ventas-total"></tr></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Ventas por día ($)</span></div>
+          <div class="panel-body"><div class="chart-container" style="height:300px"><canvas id="chart-ventas-full"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ════════════ PRODUCTOS ════════════ -->
+      <section class="section" id="s-productos">
+        <div class="info-box"><svg class="ic"><use href="#i-info"/></svg><span>Las cantidades se suman automáticamente con cada cierre del día. Acá podés corregirlas a mano si hace falta.</span></div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Cantidades vendidas del mes</span></div>
+            <div class="panel-body">
+              <div class="prod-grid" id="productos-form"></div>
+              <div class="form-actions"><button class="btn btn-primary" onclick="saveProductos()">Guardar cantidades</button></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Unidades por producto</span></div>
+            <div class="panel-body"><div class="chart-container" style="height:300px"><canvas id="chart-productos"></canvas></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ GASTOS FIJOS ════════════ -->
+      <section class="section" id="s-gastosf">
+        <div class="kpi-grid" id="gastosf-kpis"></div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Gastos fijos del mes</span>
+            <button class="btn btn-primary btn-sm" onclick="openAddGastoFijoModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Concepto</th><th class="r">Monto</th><th></th></tr></thead>
+              <tbody id="gastosf-tbody"></tbody>
+              <tfoot><tr id="gastosf-total"></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ GASTOS GENERALES ════════════ -->
+      <section class="section" id="s-gastosg">
+        <div class="kpi-grid" id="gastosg-kpis"></div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Gastos generales del mes</span>
+            <div class="panel-actions">
+              <button class="btn btn-ghost btn-sm ro-hide" onclick="openCategoriasModal()"><svg class="ic ic-sm"><use href="#i-tag"/></svg>Categorías</button>
+              <button class="btn btn-primary btn-sm" onclick="openAddGastoGModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar gasto</button>
+            </div>
+          </div>
+          <div class="panel-body" style="padding-bottom:0"><div class="chip-bar" id="gastosg-filters"></div></div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th class="r">Monto</th><th></th></tr></thead>
+              <tbody id="gastosg-tbody"></tbody>
+              <tfoot><tr id="gastosg-total"></tr></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Por categoría</span></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="chart-gastosg"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Subtotales</span></div>
+            <div class="panel-body" id="gastosg-subtotales"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ SUELDOS ════════════ -->
+      <section class="section" id="s-sueldos">
+        <div class="kpi-grid" id="sueldos-kpis"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title"><svg class="ic"><use href="#i-users"/></svg>Sueldos del mes</span>
+            <button class="btn btn-primary btn-sm ro-hide" onclick="openAddEmpleadoModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Nuevo empleado</button>
+          </div>
+          <div class="panel-body">
+            <p class="form-hint" style="margin-bottom:14px">Usá <strong>+</strong> para cargar un día trabajado (elegís la fecha en el calendario) y <strong>−</strong> para quitar el último día cargado en ese puesto.</p>
+            <div id="sueldos-emps"></div>
+          </div>
+          <div class="sueldos-total-bar" id="sueldos-total"></div>
+        </div>
+
+      </section>
+
+      <!-- ════════════ PAGOS ════════════ -->
+      <section class="section" id="s-pagos">
+        <div class="info-box"><svg class="ic"><use href="#i-info"/></svg><span>Los totales se calculan solos a partir de los cierres diarios. Para corregirlos, editá el cierre del día correspondiente.</span></div>
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Formas de pago</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Forma de pago</th><th class="r">Monto</th><th class="r">Incidencia</th></tr></thead>
+                <tbody id="pagos-tbody"></tbody>
+                <tfoot><tr id="pagos-total"></tr></tfoot>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Distribución</span></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="chart-pagos-full"></canvas></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">Participación</span></div>
+          <div class="panel-body" id="pagos-progress"></div>
+        </div>
+      </section>
+
+      <!-- ════════════ BALANCE ════════════ -->
+      <section class="section" id="s-balance">
+        <div class="kpi-grid" id="balance-kpis"></div>
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Balance general del mes</span></div>
+            <div class="panel-body" id="balance-panel-body"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Composición</span></div>
+            <div class="panel-body"><div class="chart-container"><canvas id="chart-balance"></canvas></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ DISTRIBUCIÓN ════════════ -->
+      <section class="section" id="s-distribucion">
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Cálculo de ganancias</span></div>
+            <div class="panel-body" id="dist-calculo"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Totales a pagar</span></div>
+            <div class="panel-body" id="dist-totales"></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Egresos de ganancias</span>
+              <button class="btn btn-primary btn-sm" onclick="openAddEgresoModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Fecha</th><th>Detalle</th><th class="r">Monto</th><th></th></tr></thead>
+                <tbody id="egresos-tbody"></tbody>
+                <tfoot><tr id="egresos-total"></tr></tfoot>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Adelantos a socios</span>
+              <button class="btn btn-primary btn-sm" onclick="openAddAdelantoModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Socio</th><th>Nota</th><th class="r">Monto</th><th></th></tr></thead>
+                <tbody id="adelantos-tbody"></tbody>
+                <tfoot><tr id="adelantos-total"></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ FONDO COMÚN ════════════ -->
+      <section class="section" id="s-fondocomun">
+        <div class="kpi-grid" id="fc-kpis"></div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Movimientos del fondo común</span>
+            <button class="btn btn-primary btn-sm" onclick="openAddFCModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Movimiento</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="r">Monto</th><th></th></tr></thead>
+              <tbody id="fc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ RESUMEN ════════════ -->
+      <section class="section" id="s-resumen">
+        <div class="kpi-grid" id="resumen-kpis"></div>
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Flujo completo de dinero</span></div>
+            <div class="panel-body" id="resumen-flujo"></div>
+          </div>
+          <div>
+            <div class="panel">
+              <div class="panel-header"><span class="panel-title">Actividad del mes</span></div>
+              <div class="panel-body" id="resumen-actividad"></div>
+            </div>
+            <div class="panel" style="margin-bottom:0">
+              <div class="panel-header"><span class="panel-title">Recaudación por plataforma</span></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Plataforma</th><th class="r">Total</th><th class="r">%</th></tr></thead>
+                  <tbody id="resumen-pagos-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="resumen-comparativa-panel" style="display:none">
+          <div class="panel-header"><span class="panel-title">Comparativa con meses anteriores</span></div>
+          <div class="panel-body"><div class="chart-container" style="height:300px"><canvas id="chart-comparativa"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ════════════ HISTORIAL ════════════ -->
+      <section class="section" id="s-historial">
+        <div class="kpi-grid" id="historial-kpis"></div>
+        <div class="panel" id="historial-chart-panel">
+          <div class="panel-header"><span class="panel-title">Evolución mensual</span></div>
+          <div class="panel-body"><div class="chart-container" style="height:280px"><canvas id="chart-historial"></canvas></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Meses archivados</span>
+            <span class="panel-sub">Tocá un mes para ver todo el detalle, editarlo o eliminarlo</span>
+          </div>
+          <div class="table-wrap" id="historial-list"></div>
+        </div>
+      </section>
+
+      <!-- ════════════ CONFIG ════════════ -->
+      <section class="section" id="s-config">
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Mes y socios</span></div>
+            <div class="panel-body">
+              <div class="form-grid cols-2">
+                <div class="form-group">
+                  <label for="cfg-mes">Mes</label>
+                  <select id="cfg-mes" onchange="silentSaveConfig()"></select>
+                </div>
+                <div class="form-group">
+                  <label for="cfg-anio">Año</label>
+                  <input type="number" id="cfg-anio" onchange="silentSaveConfig()" />
+                </div>
+                <div class="form-group full">
+                  <label for="cfg-pct-fc">% al fondo común</label>
+                  <input type="number" id="cfg-pct-fc" step="0.1" onchange="silentSaveConfig()" />
+                </div>
+                <div class="form-group">
+                  <label for="cfg-s1-nombre">Socio 1</label>
+                  <input type="text" id="cfg-s1-nombre" onchange="silentSaveConfig()" />
+                </div>
+                <div class="form-group">
+                  <label for="cfg-s1-pct">% socio 1</label>
+                  <input type="number" id="cfg-s1-pct" step="0.1" onchange="silentSaveConfig()" />
+                </div>
+                <div class="form-group">
+                  <label for="cfg-s2-nombre">Socio 2</label>
+                  <input type="text" id="cfg-s2-nombre" onchange="silentSaveConfig()" />
+                </div>
+                <div class="form-group">
+                  <label for="cfg-s2-pct">% socio 2</label>
+                  <input type="number" id="cfg-s2-pct" step="0.1" onchange="silentSaveConfig()" />
+                </div>
+              </div>
+              <p class="form-hint mt-4">Los cambios se guardan automáticamente.</p>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-title">Plataformas de cobro</span>
+              <button class="btn btn-ghost btn-sm ro-hide" onclick="addPlataforma()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
+            </div>
+            <div class="panel-body">
+              <p class="form-hint" style="margin-bottom:14px">Aparecen al registrar cada cierre del día.</p>
+              <div id="cfg-plataformas-list"></div>
+              <div class="form-actions"><button class="btn btn-primary" onclick="savePlataformas()">Guardar plataformas</button></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2 stack-gap">
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Cierre de mes</span></div>
+            <div class="panel-body">
+              <p class="text-muted" style="margin-bottom:16px">Archiva todo el mes en el historial y arranca uno nuevo: limpia ventas, gastos generales, adelantos y días trabajados. Se mantienen empleados, categorías y plataformas.</p>
+              <div class="form-actions" style="margin-top:0">
+                <button class="btn btn-success" onclick="cerrarMes()"><svg class="ic"><use href="#i-archive"/></svg>Cerrar mes y comenzar nuevo</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><span class="panel-title">Link de solo lectura</span></div>
+            <div class="panel-body">
+              <p class="text-muted" style="margin-bottom:14px">Para socios o contador: pueden ver todo sin modificar. Igual necesitan iniciar sesión.</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input type="text" id="readonly-link-input" class="input" readonly style="flex:1;min-width:200px;pointer-events:auto" />
+                <button class="btn btn-ghost" onclick="copyReadonlyLink()" style="display:inline-flex !important"><svg class="ic"><use href="#i-link"/></svg>Copiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Copias de seguridad</span>
+            <button class="btn btn-ghost btn-sm" onclick="exportJSON()"><svg class="ic ic-sm"><use href="#i-download"/></svg>Descargar backup</button>
+          </div>
+          <div class="panel-body">
+            <p class="text-muted" style="margin-bottom:14px">El sistema guarda copias automáticas en este navegador (como máximo una cada 10 minutos). Podés restaurar cualquiera.</p>
+            <div id="autobackup-list"></div>
+            <div class="divider"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <label class="btn btn-ghost ro-hide" style="cursor:pointer"><svg class="ic"><use href="#i-upload"/></svg>Restaurar desde archivo .json
+                <input type="file" accept=".json" style="display:none" onchange="importJSON(this)" /></label>
+              <button class="btn btn-danger ro-hide" onclick="resetData()"><svg class="ic"><use href="#i-trash"/></svg>Borrar datos del mes actual</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div></div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ════════ MODALES ════════ -->
+
+<div class="modal-overlay" id="modal-venta">
+  <div class="modal modal-wide">
+    <div class="modal-head"><h3>Día de venta</h3><button class="icon-btn" onclick="closeModal('modal-venta')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="venta-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group"><label>Fecha</label><input type="date" id="venta-fecha" onchange="$('venta-dia').value = dayNameFromISO(this.value)" /></div>
+        <div class="form-group"><label>Día</label><select id="venta-dia"><option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option><option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option></select></div>
+        <div class="form-group"><label>Burgers</label><input type="number" id="venta-burgers" min="0" placeholder="0" /></div>
+        <div class="form-group"><label>Total del día</label><input type="text" id="venta-total-display" readonly placeholder="$0" /></div>
+      </div>
+      <div class="form-section-label">Cobros por plataforma</div>
+      <div id="venta-pagos-list"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addVentaPagoRow()" style="margin-top:4px"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar plataforma</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-venta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVenta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-gastosf">
+  <div class="modal">
+    <div class="modal-head"><h3>Gasto fijo</h3><button class="icon-btn" onclick="closeModal('modal-gastosf')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="gf-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group full"><label>Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler" /></div>
+        <div class="form-group full"><label>Monto ($)</label><input type="number" id="gf-monto" min="0" placeholder="0" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gastosf')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGastoFijo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-gastosg">
+  <div class="modal">
+    <div class="modal-head"><h3>Gasto general</h3><button class="icon-btn" onclick="closeModal('modal-gastosg')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="gg-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group"><label>Fecha</label><input type="date" id="gg-fecha" /></div>
+        <div class="form-group"><label>Monto ($)</label><input type="number" id="gg-monto" min="0" placeholder="0" /></div>
+        <div class="form-group full"><label>Descripción</label><input type="text" id="gg-nombre" placeholder="Ej: Compra de harina" /></div>
+        <div class="form-group full">
+          <label>Categoría</label>
+          <select id="gg-categoria" onchange="toggleCategoriaCustom()"></select>
+        </div>
+        <div class="form-group full" id="gg-custom-wrap" style="display:none">
+          <label>Nueva categoría</label>
+          <input type="text" id="gg-categoria-custom" placeholder="Ej: Delivery, Marketing…" />
+          <span class="form-hint">Queda guardada para usarla en próximos gastos.</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gastosg')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGastoG()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-categorias">
+  <div class="modal">
+    <div class="modal-head"><h3>Categorías de gastos</h3><button class="icon-btn" onclick="closeModal('modal-categorias')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <p class="form-hint" style="margin-bottom:12px">Quedan guardadas al cerrar el mes. Cada una tiene su color: tocá el cuadradito para cambiarlo.</p>
+      <div id="categorias-list"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <input type="text" class="input" id="nueva-categoria" placeholder="Nueva categoría" onkeydown="if(event.key==='Enter')addCategoria()" />
+        <button class="btn btn-primary" onclick="addCategoria()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-categorias')">Listo</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-egreso">
+  <div class="modal">
+    <div class="modal-head"><h3>Egreso de ganancia</h3><button class="icon-btn" onclick="closeModal('modal-egreso')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="egreso-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group"><label>Fecha</label><input type="date" id="egreso-fecha" /></div>
+        <div class="form-group"><label>Monto ($)</label><input type="number" id="egreso-monto" min="0" placeholder="0" /></div>
+        <div class="form-group full"><label>Detalle</label><input type="text" id="egreso-detalle" placeholder="Descripción del egreso" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-egreso')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEgreso()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-adelanto">
+  <div class="modal">
+    <div class="modal-head"><h3>Adelanto a socio</h3><button class="icon-btn" onclick="closeModal('modal-adelanto')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="adelanto-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label>Socio</label>
+          <select id="adelanto-persona"><option value="juan">Socio 1</option><option value="emi">Socio 2</option></select>
+        </div>
+        <div class="form-group"><label>Monto ($)</label><input type="number" id="adelanto-monto" min="0" placeholder="0" /></div>
+        <div class="form-group full"><label>Nota</label><input type="text" id="adelanto-nota" placeholder="Ej: Retiro personal" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-adelanto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAdelanto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-fc">
+  <div class="modal">
+    <div class="modal-head"><h3>Movimiento del fondo común</h3><button class="icon-btn" onclick="closeModal('modal-fc')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="fc-edit-index" value="-1" />
+      <div class="form-grid cols-2">
+        <div class="form-group"><label>Fecha</label><input type="date" id="fc-fecha" /></div>
+        <div class="form-group"><label>Tipo</label><select id="fc-tipo"><option value="Ingreso">Ingreso</option><option value="Egreso">Egreso</option></select></div>
+        <div class="form-group"><label>Monto ($)</label><input type="number" id="fc-monto" min="0" placeholder="0" /></div>
+        <div class="form-group"><label>Detalle</label><input type="text" id="fc-detalle" placeholder="Descripción" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFC()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-empleado">
+  <div class="modal modal-wide">
+    <div class="modal-head"><h3>Empleado</h3><button class="icon-btn" onclick="closeModal('modal-empleado')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="emp-edit-index" value="-1" />
+      <div class="form-group"><label>Nombre</label><input type="text" id="emp-nombre" placeholder="Ej: Peter" /></div>
+      <div class="form-section-label">Puestos y pago por día</div>
+      <p class="form-hint" style="margin:-4px 0 12px">El pago por día se completa solo al cargar un día, pero lo podés cambiar en cada carga.</p>
+      <div id="emp-funciones-list"></div>
+      <button class="btn btn-ghost btn-sm" onclick="empAddFuncion()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar puesto</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-empleado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmpleado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-historial-detail">
+  <div class="modal modal-xl">
+    <div class="modal-head">
+      <div>
+        <h3 id="historial-detail-title">Detalle del mes</h3>
+        <div class="small text-muted" id="historial-detail-sub"></div>
+      </div>
+      <button class="icon-btn" onclick="closeModal('modal-historial-detail')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs" id="historial-tabs"></div>
+      <div id="historial-detail-body"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger ro-hide" onclick="borrarHistorialActual()"><svg class="ic"><use href="#i-trash"/></svg>Eliminar mes</button>
+      <button class="btn btn-ghost" onclick="descargarHistorialActual()"><svg class="ic"><use href="#i-download"/></svg>Descargar</button>
+      <span class="spacer"></span>
+      <button class="btn btn-primary" onclick="closeModal('modal-historial-detail')">Listo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario genérico (se usa para editar registros del historial) -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-head"><h3 id="form-title">Editar</h3><button class="icon-btn" onclick="closeModal('modal-form')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body"><div class="form-grid cols-2" id="form-fields"></div></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-form')">Cancelar</button>
+      <button class="btn btn-primary" id="form-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"><span class="toast-msg"></span><button class="toast-action"></button></div>
+
+<script src="config.js?v=3.6"></script>
+<script src="sync.js?v=3.6"></script>
+<script src="app.js?v=3.6"></script>
+</body>
+</html>

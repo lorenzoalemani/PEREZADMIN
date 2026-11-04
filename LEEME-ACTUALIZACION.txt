@@ -1,0 +1,18 @@
+PERE'Z BURGER - ACTUALIZACION v3.6
+
+Como instalar:
+1. Reemplazar en el hosting estos archivos:
+   index.html, styles.css, app.js, sync.js, logo.png, logo-rojo.png
+2. NO tocar config.js (tiene la conexion a Supabase). Este paquete no lo trae a proposito.
+3. No hace falta tocar nada en Supabase. Los datos no se modifican.
+
+Despues de subir: recargar la pagina. Abajo del menu tiene que decir "v3.6".
+
+Novedades:
+- Animaciones de entrada en cada seccion (numeros con un conteo suave, barras que crecen).
+- Dashboard: saludo con la fecha, estado del cierre de hoy y mini tendencia de ventas.
+- Cada categoria de gasto tiene su propio color (se puede cambiar).
+- Seccion Stock con revision semanal (OK / Flojo / Reponer) y lista para copiar.
+- Siempre abre en el Dashboard.
+
+Antes de actualizar (recomendado): en la web, menu ... > Descargar backup (JSON).

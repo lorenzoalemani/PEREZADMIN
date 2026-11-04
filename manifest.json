@@ -1,0 +1,21 @@
+{
+  "name": "Administracion - Perez´s Burger",
+  "short_name": "Perez´s",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#C8102E",
+  "icons": [
+    {
+      "src": "logo-rojo.png?v=3",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png?v=1",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
