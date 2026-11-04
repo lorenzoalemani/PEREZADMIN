@@ -39,7 +39,10 @@ const PRODUCTOS_CONFIG = [
 
 const ARS_DENOMS = [20000, 10000, 2000, 1000, 500, 200, 100];
 
-const IS_READONLY = new URLSearchParams(location.search).get('readonly') === '1';
+// Nombre del saludo (bienvenida, login y dashboard)
+const NOMBRE_SALUDO = 'Emiliano';
+
+const IS_READONLY =new URLSearchParams(location.search).get('readonly') === '1';
 const IS_TOUCH = window.matchMedia('(pointer: coarse)').matches;
 
 // Los campos numéricos no cambian con la ruedita del mouse ni con flechas
@@ -601,11 +604,14 @@ function doughnutConfig(labels, values, colors, total) {
 // 8. DASHBOARD
 // ─────────────────────────────────────────────────────
 // Saludo con la fecha y estado del cierre de hoy
-let userFirstName = '';
+let userFirstName = NOMBRE_SALUDO;
+function saludoHora() {
+  const h = new Date().getHours();
+  return h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+}
 function renderDashHero(s) {
   const now = new Date();
-  const h = now.getHours();
-  const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const saludo = saludoHora();
   const fecha = now.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   const hoy = data.ventas.find(v => v.fecha === todayISO());
   $('dash-hero').innerHTML = `
@@ -622,6 +628,163 @@ function renderDashHero(s) {
     </div>`;
 }
 
+// ── Análisis del mes: equilibrio, proyección y comparación ──
+function mesIdx(m) { return MESES_NAMES.findIndex(x => x.toLowerCase() === String(m || '').toLowerCase()); }
+function diasDelMes(cfg = data.config) {
+  const mi = mesIdx(cfg.mes), y = parseInt(cfg.anio, 10);
+  return mi < 0 || !y ? 30 : new Date(y, mi + 1, 0).getDate();
+}
+function diaDeFecha(f) { const n = parseInt(String(f || '').slice(8, 10), 10); return n > 0 && n <= 31 ? n : 0; }
+// Hasta qué día del mes hay datos: en el mes en curso, ayer (u hoy si ya se cargó el cierre)
+function diaCorte() {
+  const n = diasDelMes(), now = new Date();
+  const mi = mesIdx(data.config.mes), y = parseInt(data.config.anio, 10);
+  const ult = Math.max(0, ...data.ventas.map(v => diaDeFecha(v.fecha)));
+  if (mi === now.getMonth() && y === now.getFullYear()) return Math.min(n, Math.max(ult, now.getDate() - 1, data.ventas.length ? 1 : 0));
+  if (y * 12 + mi < now.getFullYear() * 12 + now.getMonth()) return n;
+  return ult;
+}
+// Mes cerrado más reciente anterior al actual
+function mesAnteriorSnap() {
+  const cur = (parseInt(data.config.anio, 10) || 0) * 12 + Math.max(0, mesIdx(data.config.mes));
+  const prev = getHistorial().filter(h => mesAnioOrder(h.mesAnio) < cur).pop();
+  if (!prev) return null;
+  const d = migrateData(clone(prev.data || {}));
+  return { d, nombre: d.config?.mes || String(prev.mesAnio).split('_')[0], stats: withData(d, monthStats) };
+}
+// Ventas acumuladas día por día (1..dias)
+function acumuladoPorDia(ventas, dias, campo = v => Number(v.monto) || 0) {
+  const porDia = Array(dias + 1).fill(0);
+  ventas.forEach((v, i) => { const dd = Math.min(dias, diaDeFecha(v.fecha) || i + 1); porDia[dd] += campo(v); });
+  const acc = []; let t = 0;
+  for (let i = 1; i <= dias; i++) { t += porDia[i]; acc.push(t); }
+  return acc;
+}
+function deltaChip(actual, antes, txt = '') {
+  if (!antes) return '';
+  const p = (actual - antes) / antes * 100;
+  const cls = p >= 0.5 ? 'up' : p <= -0.5 ? 'down' : 'flat';
+  return `<span class="delta ${cls}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p).toLocaleString('es-AR', { maximumFractionDigits: 0 })}%</span>${txt ? ` <span class="delta-txt">${txt}</span>` : ''}`;
+}
+function analisisMes(s) {
+  const n = diasDelMes(), corte = diaCorte();
+  const costos = s.compras + s.fijos + s.sueldos;
+  const ritmo = corte ? s.ingresos / corte : 0;           // venta por día corrido
+  const f = corte ? n / corte : 1;
+  const ventasProj = s.ingresos * f;
+  const costosProj = (s.compras + s.sueldos) * f + s.fijos;
+  const prev = mesAnteriorSnap();
+  let comp = null;
+  if (prev) {
+    const nPrev = diasDelMes(prev.d.config);
+    const accA = acumuladoPorDia(data.ventas, n), accB = acumuladoPorDia(prev.d.ventas || [], nPrev);
+    const burg = v => Number(v.burgers || v.productosDelDia?.burgers) || 0;
+    const bA = acumuladoPorDia(data.ventas, n, burg), bB = acumuladoPorDia(prev.d.ventas || [], nPrev, burg);
+    const k = Math.max(1, Math.min(corte, nPrev)) - 1;
+    comp = { prev, nPrev, accA, accB, ventasA: accA[k], ventasB: accB[k], burgA: bA[k], burgB: bB[k] };
+  }
+  return { n, corte, costos, ritmo, ventasProj, costosProj, gananciaProj: ventasProj - costosProj, completo: corte >= n, comp };
+}
+
+function renderEquilibrio(s, a) {
+  const el = $('dash-equilibrio');
+  if (!a.costos) { el.innerHTML = `<div class="empty-state">${ic('receipt')}<div>Cargá gastos y sueldos del mes para calcular el punto de equilibrio.</div></div>`; return; }
+  // Mes en curso: contra los costos estimados del mes completo (los cargados crecen día a día)
+  const est = !a.completo && a.ritmo;
+  const meta = est ? Math.max(a.costos, a.costosProj) : a.costos;
+  const cub = s.ingresos / meta;
+  const falta = meta - s.ingresos;
+  const diaEq = a.ritmo ? Math.ceil(meta / a.ritmo) : 0;
+  const deQue = est ? 'los costos estimados del mes' : 'los costos del mes';
+  el.innerHTML = `
+    <div class="eq-head">
+      <div class="eq-pct ${cub >= 1 ? 'text-green' : ''}">${Math.round(cub * 100)}%</div>
+      <div class="eq-txt">${cub >= 1
+        ? `<strong>Cubriste ${deQue}.</strong> Desde acá todo suma ganancia: ${fmt(-falta)} por encima.`
+        : `Cubriste el <strong>${Math.round(cub * 100)}%</strong> de ${deQue}. Te faltan <strong>${fmt(falta)}</strong> para empezar a ganar.`}</div>
+    </div>
+    <div class="progress-bar eq-bar"><div class="progress-fill" style="width:${Math.min(100, cub * 100).toFixed(1)}%;background:${cub >= 1 ? 'var(--green)' : 'var(--brand)'}"></div></div>
+    <div class="kv mt-4">
+      ${kvRow('Vendido', fmt(s.ingresos))}
+      ${kvRow('Costos cargados hasta hoy', fmt(a.costos))}
+      ${est ? kvRow('Costos estimados del mes', fmt(meta)) : ''}
+    </div>
+    ${est && cub < 1 ? `<p class="form-hint mt-4">${diaEq <= a.n
+      ? `A este ritmo los cubrís alrededor del <strong>día ${diaEq}</strong> de ${esc(data.config.mes)}.`
+      : `A este ritmo <strong>no llegás</strong> a cubrirlos este mes: faltarían ${fmt(meta - a.ventasProj)}.`}</p>` : ''}`;
+}
+
+function renderProyeccion(s, a) {
+  const el = $('dash-proyeccion');
+  if (!a.corte || !s.ingresos) { el.innerHTML = `<div class="empty-state">${ic('trend')}<div>Con los primeros cierres del mes vas a ver la proyección.</div></div>`; return; }
+  const mes = esc(data.config.mes);
+  el.innerHTML = a.completo ? `
+    <p class="eq-txt">${mes} ya terminó: cerró en <strong>${fmt(s.ingresos)}</strong> de ventas y <strong>${fmt(s.neta)}</strong> de ganancia.</p>` : `
+    <p class="eq-txt">Al ritmo actual, terminás ${mes} en</p>
+    <div class="proj-grid">
+      <div><div class="proj-lbl">Ventas</div><div class="proj-val">${fmt(a.ventasProj)}</div></div>
+      <div><div class="proj-lbl">Ganancia</div><div class="proj-val ${a.gananciaProj >= 0 ? 'text-green' : 'text-red'}">${fmt(a.gananciaProj)}</div></div>
+    </div>
+    <div class="kv mt-4">
+      ${kvRow('Venta por día corrido', fmt(a.ritmo))}
+      ${kvRow('Días transcurridos', `${a.corte} de ${a.n}`)}
+      ${a.comp ? kvRow(`${esc(a.comp.prev.nombre)} cerró en`, fmt(a.comp.prev.stats.ingresos)) : ''}
+    </div>
+    <p class="form-hint mt-4">Proyecta ventas, gastos generales y sueldos al ritmo de lo que va del mes. Los gastos fijos se toman como están cargados.</p>`;
+}
+
+function renderComparacion(a) {
+  const head = $('dash-comp-head'), wrap = $('chart-comp-dash').parentElement;
+  if (!a.comp) {
+    $('dash-comp-title').textContent = 'Comparación con el mes anterior';
+    head.innerHTML = `<div class="empty-state">${ic('calendar')}<div>Cuando cierres el primer mes, acá vas a ver cómo vas contra el anterior día por día.</div></div>`;
+    wrap.style.display = 'none'; destroyChart('comp-dash'); return;
+  }
+  const c = a.comp, prevN = esc(c.prev.nombre), dia = Math.max(1, Math.min(a.corte, c.nPrev));
+  $('dash-comp-title').textContent = `${data.config.mes} contra ${c.prev.nombre}`;
+  wrap.style.display = '';
+  const p = c.ventasB ? (c.ventasA - c.ventasB) / c.ventasB * 100 : 0;
+  head.innerHTML = c.ventasB ? `<p class="eq-txt comp-line">Día ${dia}: vas <strong class="${p >= 0 ? 'text-green' : 'text-red'}">${p >= 0 ? '+' : '−'}${Math.abs(p).toLocaleString('es-AR', { maximumFractionDigits: 0 })}%</strong> contra ${prevN} al mismo día <span class="text-muted">(${fmt(c.ventasA)} contra ${fmt(c.ventasB)})</span>.</p>`
+    : `<p class="eq-txt comp-line text-muted">${prevN} no tiene ventas con fecha para comparar día por día.</p>`;
+  const L = Math.max(a.n, c.nPrev);
+  makeChart('comp-dash', 'chart-comp-dash', {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: L }, (_, i) => i + 1),
+      datasets: [
+        { label: data.config.mes, data: c.accA.slice(0, a.corte), borderColor: BRAND, backgroundColor: 'rgba(200,16,46,.08)', fill: true, borderWidth: 2.5, tension: .3, pointRadius: 0, pointHoverRadius: 4 },
+        { label: c.prev.nombre, data: c.accB, borderColor: GRAY, borderDash: [5, 4], borderWidth: 2, tension: .3, pointRadius: 0, pointHoverRadius: 4, fill: false },
+      ],
+    },
+    options: (() => {
+      const o = barOptions({ legend: true });
+      o.scales.x.ticks = { callback: (v, i) => (i + 1) % 5 === 0 || i === 0 ? i + 1 : '' , autoSkip: false, maxRotation: 0 };
+      o.plugins.tooltip.callbacks.title = items => `Día ${items[0].label}`;
+      return o;
+    })(),
+  });
+}
+
+function renderMediosPago() {
+  const plats = data.config.plataformas || [];
+  const rows = {};
+  const row = k => rows[k] || (rows[k] = { entro: 0, salio: 0 });
+  plats.forEach(row);
+  data.ventas.forEach(v => (v.pagos || []).forEach(p => { if (p.plataforma && p.monto) row(p.plataforma).entro += Number(p.monto) || 0; }));
+  const pago = g => { if (g.monto) row(g.medio || 'Sin especificar').salio += Number(g.monto) || 0; };
+  data.gastosGenerales.forEach(pago); data.gastosFijosDetalle.forEach(pago); (data.sueldosRegistros || []).forEach(pago);
+  const list = Object.entries(rows).filter(([k, r]) => r.entro || r.salio || plats.includes(k));
+  const tot = list.reduce((t, [, r]) => ({ entro: t.entro + r.entro, salio: t.salio + r.salio }), { entro: 0, salio: 0 });
+  $('dash-medios').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Medio</th><th class="r">Entró (ventas)</th><th class="r">Salió (gastos y sueldos)</th><th class="r">Queda</th></tr></thead>
+    <tbody>${list.map(([k, r]) => `<tr>
+      <td class="fw-600">${esc(k)}</td><td class="r text-green">${r.entro ? fmt(r.entro) : '—'}</td><td class="r">${r.salio ? '− ' + fmt(r.salio) : '—'}</td>
+      <td class="r fw-600 ${r.entro - r.salio < 0 ? 'text-red' : ''}">${fmt(r.entro - r.salio)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td class="r">${fmt(tot.entro)}</td><td class="r">− ${fmt(tot.salio)}</td><td class="r">${fmt(tot.entro - tot.salio)}</td></tr></tfoot>
+  </table></div>
+  <p class="form-hint mt-4">Lo cobrado en cada medio menos lo que se pagó con ese medio este mes. ${rows['Sin especificar'] ? '“Sin especificar” son gastos cargados sin indicar con qué se pagaron.' : ''}</p>`;
+}
+
 function renderDashboard() {
   const rep = stockParaReponer();
   const nRep = rep.filter(x => x.c.estado === 'reponer').length;
@@ -632,14 +795,19 @@ function renderDashboard() {
   const s = monthStats();
   const saldoFC = calcSaldoFondoComun();
   renderDashHero(s);
+  const a = analisisMes(s), c = a.comp, vs = c ? `vs ${esc(c.prev.nombre)} al día ${Math.max(1, Math.min(a.corte, c.nPrev))}` : '';
   $('kpi-grid').innerHTML = [
-    kpi({ label: 'Ingresos del mes', icon: 'cash', value: fmt(s.ingresos), sub: `${s.dias} días · ${data.config.mes} ${data.config.anio}`, cls: 'accent', spark: sortedVentas().map(v => v.monto) }),
+    kpi({ label: 'Ingresos del mes', icon: 'cash', value: fmt(s.ingresos), sub: c && c.ventasB ? deltaChip(c.ventasA, c.ventasB, vs) : `${s.dias} días · ${data.config.mes} ${data.config.anio}`, cls: 'accent', spark: sortedVentas().map(v => v.monto) }),
     kpi({ label: 'Ganancia neta', icon: 'trend', value: fmt(s.neta), sub: `Margen ${pct(s.neta, s.ingresos)}`, cls: s.neta >= 0 ? 'green' : 'red' }),
     kpi({ label: 'A distribuir', icon: 'pie', value: fmt(s.dist), sub: `Fondo común ${fmt(s.fc)}` }),
-    kpi({ label: 'Burgers vendidas', icon: 'burger', value: fmtInt(s.burgers), sub: s.dias ? `${fmtInt(Math.round(s.burgers / s.dias))} por día` : 'Sin cierres' }),
-    kpi({ label: 'Promedio por día', icon: 'calendar', value: fmt(s.promedio), sub: s.best ? `Mejor: ${esc(s.best.dia)} ${formatDateShort(s.best.fecha)}` : '—' }),
+    kpi({ label: 'Burgers vendidas', icon: 'burger', value: fmtInt(s.burgers), sub: (s.dias ? `${fmtInt(Math.round(s.burgers / s.dias))} por día` : 'Sin cierres') + (c && c.burgB ? ' ' + deltaChip(c.burgA, c.burgB) : '') }),
+    kpi({ label: 'Promedio por día', icon: 'calendar', value: fmt(s.promedio), sub: c && c.prev.stats.promedio && s.dias ? deltaChip(s.promedio, c.prev.stats.promedio, `vs ${esc(c.prev.nombre)}`) : (s.best ? `Mejor: ${esc(s.best.dia)} ${formatDateShort(s.best.fecha)}` : '—') }),
     kpi({ label: 'Saldo fondo común', icon: 'bank', value: fmt(saldoFC), sub: `${data.fondoComun.length} movimientos`, cls: saldoFC < 0 ? 'red' : '' }),
   ].join('');
+  renderEquilibrio(s, a);
+  renderProyeccion(s, a);
+  renderComparacion(a);
+  renderMediosPago();
 
   const ventas = sortedVentas();
   makeChart('ventas-dash', 'chart-ventas-dash', {
@@ -866,29 +1034,33 @@ function renderGastosFijos() {
   $('gastosf-tbody').innerHTML = data.gastosFijosDetalle.length ? data.gastosFijosDetalle.map(g => `
     <tr>
       <td>${esc(g.nombre)}</td>
+      <td>${medioBadge(g.medio)}</td>
       <td class="r fw-600">${fmt(g.monto)}</td>
       <td class="r">${rowActions(`editGastoFijo('${g.id}')`, `deleteGastoFijo('${g.id}')`)}</td>
-    </tr>`).join('') : emptyRow(3, 'No hay gastos fijos cargados.');
-  $('gastosf-total').innerHTML = `<td>Total</td><td class="r">${fmt(total)}</td><td></td>`;
+    </tr>`).join('') : emptyRow(4, 'No hay gastos fijos cargados.');
+  $('gastosf-total').innerHTML = `<td colspan="2">Total</td><td class="r">${fmt(total)}</td><td></td>`;
 }
 function openAddGastoFijoModal() {
   $('gf-edit-index').value = ''; $('gf-nombre').value = ''; $('gf-monto').value = '';
+  fillMedioSelect('gf-medio');
   openModal('modal-gastosf');
 }
 function editGastoFijo(id) {
   const g = data.gastosFijosDetalle.find(x => x.id === id);
   if (!g) return;
   $('gf-edit-index').value = id; $('gf-nombre').value = g.nombre; $('gf-monto').value = g.monto;
+  fillMedioSelect('gf-medio', g.medio || '');
   openModal('modal-gastosf');
 }
 function saveGastoFijo() {
   const id = $('gf-edit-index').value;
   const nombre = $('gf-nombre').value.trim();
   const monto = num($('gf-monto').value);
+  const medio = $('gf-medio').value;
   if (!nombre) { showToast('Completá el concepto'); return; }
   const i = data.gastosFijosDetalle.findIndex(g => g.id === id);
-  if (i >= 0) data.gastosFijosDetalle[i] = { ...data.gastosFijosDetalle[i], nombre, monto };
-  else data.gastosFijosDetalle.push({ id: uid(), nombre, monto });
+  if (i >= 0) data.gastosFijosDetalle[i] = { ...data.gastosFijosDetalle[i], nombre, monto, medio };
+  else data.gastosFijosDetalle.push({ id: uid(), nombre, monto, medio });
   closeModal('modal-gastosf');
   saveData('Gasto fijo guardado');
 }
@@ -937,6 +1109,7 @@ function gastoRowHTML(g, indent = false) {
     <td class="text-muted" ${indent ? 'style="padding-left:28px"' : ''}>${formatDate(g.fecha)}</td>
     <td>${esc(g.nombre)}</td>
     <td><span class="badge badge-gray"><span class="cat-dot" style="background:${getCatColor(g.categoria)};margin-right:0"></span>${esc(g.categoria)}</span></td>
+    <td>${medioBadge(g.medio)}</td>
     <td class="r fw-600">${fmt(g.monto)}</td>
     <td class="r">${rowActions(`editGastoG('${g.id}')`, `deleteGastoG('${g.id}')`)}</td>
   </tr>`;
@@ -947,17 +1120,30 @@ function renderGastosGeneralesTable() {
     .slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   const total = list.reduce((s, g) => s + g.monto, 0);
   let rows = '';
-  if (!list.length) rows = emptyRow(5, isTodos ? 'Todavía no cargaste gastos este mes.' : 'No hay gastos en esta categoría.', 'box');
+  if (!list.length) rows = emptyRow(6, isTodos ? 'Todavía no cargaste gastos este mes.' : 'No hay gastos en esta categoría.', 'box');
   else if (isTodos) {
     getAllCats().forEach(cat => {
       const items = list.filter(g => g.categoria === cat);
       if (!items.length) return;
-      rows += `<tr class="group-row"><td colspan="3"><span class="cat-dot" style="background:${getCatColor(cat)}"></span>${esc(cat)} <span class="text-muted">· ${items.length}</span></td><td class="r">${fmt(items.reduce((s, g) => s + g.monto, 0))}</td><td></td></tr>`;
+      rows += `<tr class="group-row"><td colspan="4"><span class="cat-dot" style="background:${getCatColor(cat)}"></span>${esc(cat)} <span class="text-muted">· ${items.length}</span></td><td class="r">${fmt(items.reduce((s, g) => s + g.monto, 0))}</td><td></td></tr>`;
       rows += items.map(g => gastoRowHTML(g, true)).join('');
     });
   } else rows = list.map(g => gastoRowHTML(g)).join('');
   $('gastosg-tbody').innerHTML = rows;
-  $('gastosg-total').innerHTML = `<td colspan="3">Total${isTodos ? '' : ' · ' + esc(currentGastosGFilter)}</td><td class="r">${fmt(total)}</td><td></td>`;
+  $('gastosg-total').innerHTML = `<td colspan="4">Total${isTodos ? '' : ' · ' + esc(currentGastosGFilter)}</td><td class="r">${fmt(total)}</td><td></td>`;
+}
+
+// Medio con el que se pagó un gasto (las mismas plataformas del cierre del día)
+function fillMedioSelect(id, selected) {
+  const plats = data.config.plataformas || [];
+  const opts = [...plats];
+  if (selected && !opts.includes(selected)) opts.push(selected);
+  const val = selected === undefined ? (plats[0] || '') : selected;
+  $(id).innerHTML = (selected === '' ? '<option value="">Sin especificar</option>' : '')
+    + opts.map(p => `<option value="${esc(p)}" ${p === val ? 'selected' : ''}>${esc(p)}</option>`).join('');
+}
+function medioBadge(m) {
+  return m ? `<span class="badge badge-gray">${esc(m)}</span>` : '<span class="text-muted">—</span>';
 }
 
 function fillCategoriaSelect(selected) {
@@ -979,6 +1165,7 @@ function openAddGastoGModal() {
   $('gg-categoria-custom').value = '';
   const pre = currentGastosGFilter !== 'Todos' ? currentGastosGFilter : (data.config.categoriasGastos[0] || '');
   fillCategoriaSelect(pre);
+  fillMedioSelect('gg-medio');
   $('gg-custom-wrap').style.display = 'none';
   openModal('modal-gastosg');
 }
@@ -991,6 +1178,7 @@ function editGastoG(id) {
   $('gg-monto').value = g.monto;
   $('gg-categoria-custom').value = '';
   fillCategoriaSelect(g.categoria);
+  fillMedioSelect('gg-medio', g.medio || '');
   $('gg-custom-wrap').style.display = 'none';
   openModal('modal-gastosg');
 }
@@ -1000,14 +1188,15 @@ function saveGastoG() {
   const nombre = $('gg-nombre').value.trim();
   const monto = num($('gg-monto').value);
   let categoria = $('gg-categoria').value;
+  const medio = $('gg-medio').value;
   if (!nombre) { showToast('Completá la descripción'); return; }
   if (categoria === '__custom__') {
     categoria = ensureCategoria($('gg-categoria-custom').value);
     if (!categoria) { showToast('Escribí el nombre de la nueva categoría'); return; }
   } else ensureCategoria(categoria);
   const i = data.gastosGenerales.findIndex(g => g.id === id);
-  if (i >= 0) data.gastosGenerales[i] = { ...data.gastosGenerales[i], fecha, nombre, monto, categoria };
-  else data.gastosGenerales.push({ id: uid(), fecha, nombre, monto, categoria });
+  if (i >= 0) data.gastosGenerales[i] = { ...data.gastosGenerales[i], fecha, nombre, monto, categoria, medio };
+  else data.gastosGenerales.push({ id: uid(), fecha, nombre, monto, categoria, medio });
   closeModal('modal-gastosg');
   saveData('Gasto guardado');
 }
@@ -1464,17 +1653,18 @@ function renderHistorialDetail() {
     const gg = [...d.gastosGenerales].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     html = `<div class="mini-head"><h4>Gastos generales · ${fmt(s.compras)}</h4>${addBtn('gastosGenerales', 'Agregar gasto')}</div>
       <div class="box table-wrap"><table>
-        <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th class="r">Monto</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th class="hide-sm">Pagado con</th><th class="r">Monto</th><th></th></tr></thead>
         <tbody>${gg.map(g => `<tr>
           <td class="text-muted">${formatDate(g.fecha)}</td><td>${esc(g.nombre)}</td>
           <td><span class="badge badge-gray"><span class="cat-dot" style="background:${getCatColor(g.categoria)};margin-right:0"></span>${esc(g.categoria)}</span></td>
+          <td class="hide-sm">${medioBadge(g.medio)}</td>
           <td class="r fw-600">${fmt(g.monto)}</td><td class="r">${acts('gastosGenerales', g.id)}</td>
-        </tr>`).join('') || emptyRow(5, 'Sin gastos generales.')}</tbody>
+        </tr>`).join('') || emptyRow(6, 'Sin gastos generales.')}</tbody>
       </table></div>
       <div class="mini-head"><h4>Gastos fijos · ${fmt(s.fijos)}</h4>${addBtn('gastosFijosDetalle', 'Agregar gasto fijo')}</div>
       <div class="box table-wrap"><table>
-        <thead><tr><th>Concepto</th><th class="r">Monto</th><th></th></tr></thead>
-        <tbody>${d.gastosFijosDetalle.map(g => `<tr><td>${esc(g.nombre)}</td><td class="r fw-600">${fmt(g.monto)}</td><td class="r">${acts('gastosFijosDetalle', g.id)}</td></tr>`).join('') || emptyRow(3, 'Sin gastos fijos.')}</tbody>
+        <thead><tr><th>Concepto</th><th class="hide-sm">Pagado con</th><th class="r">Monto</th><th></th></tr></thead>
+        <tbody>${d.gastosFijosDetalle.map(g => `<tr><td>${esc(g.nombre)}</td><td class="hide-sm">${medioBadge(g.medio)}</td><td class="r fw-600">${fmt(g.monto)}</td><td class="r">${acts('gastosFijosDetalle', g.id)}</td></tr>`).join('') || emptyRow(4, 'Sin gastos fijos.')}</tbody>
       </table></div>`;
   }
 
@@ -1577,13 +1767,15 @@ function histFieldsFor(coll, d, rec = {}) {
         { k: 'fecha', label: 'Fecha', type: 'date', value: rec.fecha || '' },
         { k: 'monto', label: 'Monto ($)', type: 'number', value: rec.monto ?? '' },
         { k: 'nombre', label: 'Descripción', type: 'text', value: rec.nombre || '', full: true, required: true },
-        { k: 'categoria', label: 'Categoría', type: 'select', options: cats.map(x => [x, x]), value: rec.categoria || cats[0], full: true },
+        { k: 'categoria', label: 'Categoría', type: 'select', options: cats.map(x => [x, x]), value: rec.categoria || cats[0] },
+        histMedioField(d, rec),
       ];
     }
     case 'gastosFijosDetalle':
       return [
         { k: 'nombre', label: 'Concepto', type: 'text', value: rec.nombre || '', full: true, required: true },
-        { k: 'monto', label: 'Monto ($)', type: 'number', value: rec.monto ?? '', full: true },
+        { k: 'monto', label: 'Monto ($)', type: 'number', value: rec.monto ?? '' },
+        histMedioField(d, rec),
       ];
     case 'adelantos':
       return [
@@ -1608,6 +1800,10 @@ function histFieldsFor(coll, d, rec = {}) {
       return registroFields(d, rec);
   }
   return [];
+}
+function histMedioField(d, rec) {
+  const plats = [...new Set([...(d.config.plataformas || []), rec.medio].filter(Boolean))];
+  return { k: 'medio', label: 'Pagado con', type: 'select', options: [['', 'Sin especificar'], ...plats.map(x => [x, x])], value: rec.medio !== undefined ? rec.medio : (rec.id ? '' : (plats[0] || '')) };
 }
 const H_TITLES = { ventas: 'día de venta', gastosGenerales: 'gasto general', gastosFijosDetalle: 'gasto fijo', adelantos: 'adelanto', egresosGanancia: 'egreso', fondoComun: 'movimiento', sueldos: 'día trabajado' };
 
@@ -2298,6 +2494,7 @@ function renderSueldos() {
         <div>
           <div class="emp-card-name">${esc(e.nombre)}</div>
           <div class="small text-muted">${diasTxt(calcDiasSueldos(regsDe(e.id)))} · total ${fmt(empTotal)}</div>
+          ${mediosResumen(regsDe(e.id))}
         </div>
         ${rowActions(`editEmpleado('${e.id}')`, `deleteEmpleado('${e.id}')`)}
       </div>
@@ -2332,6 +2529,19 @@ function renderSueldos() {
   $('sueldos-total').innerHTML = `<span>Total sueldos del mes${sinEmpleado.length ? ` <span class="small text-muted">(incluye ${sinEmpleado.length} días de empleados eliminados)</span>` : ''}</span><strong>${fmt(total)}</strong>`;
 }
 
+// Medio con el que se le pagó el último día (para proponerlo en el próximo)
+function ultimoMedioDe(empId) {
+  const r = regsDe(empId).filter(x => x.medio !== undefined).sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).pop();
+  return r ? r.medio : (data.config.plataformas || [])[0] || '';
+}
+// "Efectivo $X · Mercado Pago 1 $Y" de un grupo de pagos
+function mediosResumen(list) {
+  const m = {};
+  list.forEach(r => { if (r.monto) { const k = r.medio || 'Sin especificar'; m[k] = (m[k] || 0) + (Number(r.monto) || 0); } });
+  const parts = Object.entries(m);
+  return parts.length ? `<div class="medios-mini">${parts.map(([k, v]) => `<span class="badge badge-gray">${esc(k)} · ${fmt(v)}</span>`).join('')}</div>` : '';
+}
+
 // + : cargar un día en ese puesto eligiendo la fecha en el calendario
 function agregarDia(empId, funcEnc) {
   if (IS_READONLY) return;
@@ -2344,6 +2554,7 @@ function agregarDia(empId, funcEnc) {
     fields: [
       { k: 'fecha', label: 'Fecha', type: 'date', value: todayISO(), required: true },
       { k: 'monto', label: 'Pago de ese día ($)', type: 'number', value: p?.pagoPorDia || '', required: true },
+      histMedioField(data, { medio: ultimoMedioDe(empId) }),
       { k: 'nota', label: 'Nota (opcional)', type: 'text', value: '', full: true },
     ],
     onSave: v => {
@@ -2351,7 +2562,7 @@ function agregarDia(empId, funcEnc) {
       if (!monto) { showToast('Cargá el pago de ese día'); return; }
       if (regsDe(empId, funcion).some(r => r.fecha === v.fecha) &&
           !confirm(`${e.nombre} ya tiene cargado el ${formatDate(v.fecha)} como ${funcion}. ¿Cargarlo otra vez?`)) return;
-      const reg = { id: uid(), empId, empNombre: e.nombre, fecha: v.fecha, funcion, monto, nota: v.nota || '' };
+      const reg = { id: uid(), empId, empNombre: e.nombre, fecha: v.fecha, funcion, monto, medio: v.medio || '', nota: v.nota || '' };
       data.sueldosRegistros.push(reg);
       commit();
       showToast(`${e.nombre} · ${formatDate(v.fecha)} · ${fmt(monto)} cargado`, { action: 'Deshacer', onAction: () => deleteRegistro(reg.id, true) });
@@ -2428,6 +2639,7 @@ function registroFields(d, r = {}) {
     { k: 'fecha', label: 'Fecha', type: 'date', value: r.fecha || '' },
     { k: 'funcion', label: 'Puesto', type: 'text', value: r.funcion || '', suggest: funcs, required: true },
     { k: 'monto', label: 'Pago de ese día ($)', type: 'number', value: r.monto ?? '', required: true },
+    histMedioField(d, r),
     ...(Number(r.dias) > 1 ? [{ k: 'dias', label: 'Cantidad de días (carga anterior)', type: 'number', value: r.dias }] : []),
     { k: 'nota', label: 'Nota', type: 'text', value: r.nota || '', full: true },
   ];
@@ -2440,6 +2652,7 @@ function applyRegistro(d, id, v) {
   const funcion = v.funcion.trim() || 'General';
   if (!e.funciones.some(f => f.funcion.toLowerCase() === funcion.toLowerCase())) e.funciones.push({ id: uid(), funcion, pagoPorDia: num(v.monto) });
   const reg = { empId: e.id, empNombre: e.nombre, fecha: v.fecha, funcion, monto: num(v.monto), nota: v.nota || '' };
+  if (v.medio !== undefined) reg.medio = v.medio;
   if (v.dias !== undefined) reg.dias = Math.max(1, int(v.dias));
   const i = d.sueldosRegistros.findIndex(x => x.id === id);
   if (i >= 0) d.sueldosRegistros[i] = { ...d.sueldosRegistros[i], ...reg };
@@ -2721,7 +2934,6 @@ function setUserUI(user) {
   $('user-role').textContent = IS_READONLY ? 'Solo lectura' : (user ? 'Edición' : 'Sin login');
   $('user-avatar').textContent = (name[0] || '·').toUpperCase();
   $('logout-btn').style.display = user ? '' : 'none';
-  userFirstName = user ? name.charAt(0).toUpperCase() + name.slice(1) : '';
 }
 
 async function logout() {
@@ -2737,19 +2949,29 @@ async function logout() {
 }
 
 function showLogin() {
+  $('login-title').textContent = `${saludoHora()}, ${NOMBRE_SALUDO}`;
   document.body.classList.remove('is-loading');
   document.body.classList.add('is-locked');
-  setTimeout(() => $('login-user').focus(), 50);
+  if (!IS_TOUCH) setTimeout(() => $('login-user').focus(), 700);
 }
 
+// Bienvenida: logo + saludo, y después el Dashboard con su animación
 function boot() {
-  document.body.classList.remove('is-locked', 'is-loading');
-  if (IS_READONLY) document.body.classList.add('readonly');
-  // Siempre abre en el Dashboard, con animación de entrada
-  document.body.classList.add('intro');
-  navigateTo('dashboard');
-  setTimeout(() => document.body.classList.remove('intro'), 1200);
+  const body = document.body;
+  $('splash-greet').textContent = `${saludoHora()}, ${NOMBRE_SALUDO}`;
+  body.classList.remove('is-locked', 'login-out', 'is-loading');
+  body.classList.add('splash');
+  if (IS_READONLY) body.classList.add('readonly');
   updateMonthBadge();
+  const wait = REDUCED_MOTION ? 400 : 1300;
+  setTimeout(() => {
+    body.classList.add('splash-out');
+    // Siempre abre en el Dashboard, con animación de entrada
+    body.classList.add('intro');
+    navigateTo('dashboard');
+    setTimeout(() => body.classList.remove('splash', 'splash-out'), REDUCED_MOTION ? 0 : 550);
+    setTimeout(() => body.classList.remove('intro'), 1200);
+  }, wait);
 }
 
 $('login-pass-toggle').addEventListener('click', () => {
@@ -2769,6 +2991,8 @@ $('login-form').addEventListener('submit', async e => {
     const u = await Sync.login(user, pass);
     $('login-pass').value = '';
     setUserUI(u);
+    document.body.classList.add('login-out');
+    await new Promise(r => setTimeout(r, REDUCED_MOTION ? 0 : 380));
     boot();
     Sync.start();
   } catch (ex) {
