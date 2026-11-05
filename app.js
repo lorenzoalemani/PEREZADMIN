@@ -2872,7 +2872,7 @@ function copiarListaReposicion() {
   const linea = ({ p, c }) => `• ${p.nombre}${c.nota ? ' (' + c.nota + ')' : ''}`;
   const rep = lista.filter(x => x.c.estado === 'reponer');
   const flo = lista.filter(x => x.c.estado === 'flojo');
-  const txt = [`Pere'z Burger · Stock ${formatDate(todayISO())}`,
+  const txt = [`Perez's Burger · Stock ${formatDate(todayISO())}`,
     ...(rep.length ? ['', 'REPONER:', ...rep.map(linea)] : []),
     ...(flo.length ? ['', 'FLOJO:', ...flo.map(linea)] : [])].join('\n');
   navigator.clipboard.writeText(txt)
