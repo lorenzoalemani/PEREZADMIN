@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3.9.1" />
+  <link rel="stylesheet" href="styles.css?v=4.0" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
@@ -144,7 +144,7 @@
         </div>
         <button class="icon-btn" id="logout-btn" onclick="logout()" title="Cerrar sesión" aria-label="Cerrar sesión"><svg class="ic"><use href="#i-logout"/></svg></button>
       </div>
-      <div class="version">v3.9 · Control mensual</div>
+      <div class="version">v4.0 · Control mensual</div>
     </div>
   </nav>
 
@@ -369,9 +369,10 @@
             <span class="panel-title">Gastos fijos del mes</span>
             <button class="btn btn-primary btn-sm" onclick="openAddGastoFijoModal()"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Agregar</button>
           </div>
+          <div id="gastosf-progress" class="gf-progress"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Concepto</th><th>Pagado con</th><th class="r">Monto</th><th></th></tr></thead>
+              <thead><tr><th>Concepto</th><th class="r">Total</th><th>Estado</th><th class="hide-sm"></th></tr></thead>
               <tbody id="gastosf-tbody"></tbody>
               <tfoot><tr id="gastosf-total"></tr></tfoot>
             </table>
@@ -696,6 +697,24 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-gf-pagar">
+  <div class="modal">
+    <div class="modal-head"><h3>Pagar <span id="gfp-nombre"></span></h3><button class="icon-btn" onclick="closeModal('modal-gf-pagar')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="gfp-id" />
+      <div class="form-grid cols-2">
+        <div class="form-group full"><label>Monto pagado ($)</label><input type="number" id="gfp-monto" min="0" placeholder="0" /></div>
+        <div class="form-group"><label>¿Con qué lo pagaste?</label><select id="gfp-medio"></select></div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="gfp-fecha" /></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gf-pagar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarPagoGastoFijo()"><svg class="ic ic-sm"><use href="#i-check"/></svg>Marcar pagado</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-gastosf">
   <div class="modal">
     <div class="modal-head"><h3>Gasto fijo</h3><button class="icon-btn" onclick="closeModal('modal-gastosf')" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button></div>
@@ -703,8 +722,11 @@
       <input type="hidden" id="gf-edit-index" value="-1" />
       <div class="form-grid cols-2">
         <div class="form-group full"><label>Concepto</label><input type="text" id="gf-nombre" placeholder="Ej: Alquiler" /></div>
-        <div class="form-group"><label>Monto ($)</label><input type="number" id="gf-monto" min="0" placeholder="0" /></div>
+        <div class="form-group full"><label>Total del mes ($)</label><input type="number" id="gf-monto" min="0" placeholder="0" /></div>
+      </div>
+      <div class="form-grid cols-2 mt-4" id="gf-pago-fields">
         <div class="form-group"><label>Pagado con</label><select id="gf-medio"></select></div>
+        <div class="form-group"><label>Fecha de pago</label><input type="date" id="gf-fecha" /></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -869,8 +891,8 @@
 
 <div id="toast" role="status" aria-live="polite"><span class="toast-msg"></span><button class="toast-action"></button></div>
 
-<script src="config.js?v=3.9.1"></script>
-<script src="sync.js?v=3.9.1"></script>
-<script src="app.js?v=3.9.1"></script>
+<script src="config.js?v=4.0"></script>
+<script src="sync.js?v=4.0"></script>
+<script src="app.js?v=4.0"></script>
 </body>
 </html>

@@ -1017,3 +1017,13 @@ body.login-out .login-card { animation: login-out .4s cubic-bezier(.7,0,.3,1) fo
   .eq-pct { font-size: 28px; }
   .proj-val { font-size: 18px; }
 }
+
+/* v4.0 · Gastos fijos: pagado / pendiente */
+.gf-progress { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+.gf-progress:empty { display: none; }
+.gf-acts { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.gf-det { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+tr.gf-ok td:first-child, tr.gf-ok td:nth-child(2) { color: var(--text-2); }
+.gf-acts-m { margin-top: 8px; }
+.gf-acts-m .gf-acts { justify-content: flex-start; }
+@media (max-width: 640px) { .gf-det { display: block; margin-top: 3px; } }

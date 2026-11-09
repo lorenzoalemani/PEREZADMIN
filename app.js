@@ -312,8 +312,8 @@ function migrateData(d) {
   // Cada categoría guardada tiene su color (en orden, así las primeras conservan el que ya tenían)
   d.config.categoriasGastos.forEach(c => assignCatColor(d.config, c));
 
-  const gf = d.gastosFijosDetalle.reduce((s, g) => s + (Number(g.monto) || 0), 0);
-  if (gf > 0) d.balance.gastosFijos = gf;
+  const gf = gfPagadoTotal(d.gastosFijosDetalle);
+  if (gf > 0 || d.gastosFijosDetalle.length) d.balance.gastosFijos = gf;
   if (d.gastosGenerales.length) d.balance.compras = d.gastosGenerales.reduce((s, g) => s + (Number(g.monto) || 0), 0);
   return d;
 }
@@ -358,7 +358,7 @@ function silentSave() { commit({ render: false }); }
 
 function syncAutoBalances() {
   if (data.ventas.length) data.balance.ventas = data.ventas.reduce((s, v) => s + (Number(v.monto) || 0), 0);
-  const gf = data.gastosFijosDetalle.reduce((s, g) => s + (Number(g.monto) || 0), 0);
+  const gf = gfPagadoTotal(data.gastosFijosDetalle);
   if (gf > 0 || data.gastosFijosDetalle.length) data.balance.gastosFijos = gf;
   if (data.gastosGenerales.length) data.balance.compras = data.gastosGenerales.reduce((s, g) => s + (Number(g.monto) || 0), 0);
   const sueldos = calcTotalSueldos();
@@ -403,6 +403,11 @@ function calcSaldoFondoComun()   { return calcSaldoFC(data.fondoComun); }
 function calcSaldoFC(movs)       { return (movs || []).reduce((s, m) => m.tipo === 'Ingreso' ? s + m.monto : s - m.monto, 0); }
 function socioNombre(key)        { return key === 'juan' ? data.config.socio1Nombre : data.config.socio2Nombre; }
 
+// Gastos fijos: cada uno tiene su total del mes y se marca como pagado (los cargados antes de v4.0 cuentan como pagados)
+function gfPagado(g) { return g.pagado !== false; }
+function gfPagadoTotal(list) { return (list || []).filter(gfPagado).reduce((s, g) => s + (Number(g.monto) || 0), 0); }
+function gfTotal(list) { return (list || []).reduce((s, g) => s + (Number(g.monto) || 0), 0); }
+
 function monthStats() {
   syncAutoBalances();
   const b = data.balance;
@@ -410,6 +415,7 @@ function monthStats() {
   const best = ventas.length ? ventas.reduce((x, v) => v.monto > x.monto ? v : x, ventas[0]) : null;
   return {
     ingresos: b.ventas || 0, compras: b.compras || 0, fijos: b.gastosFijos || 0, sueldos: b.sueldos || 0,
+    fijosTotal: data.gastosFijosDetalle.length ? gfTotal(data.gastosFijosDetalle) : (b.gastosFijos || 0),
     neta: calcGananciaNeta(), fc: calcFondoComun(), egr: calcTotalEgresos(), dist: calcGananciaDistribuir(),
     s1: calcParteSocio('juan'), s2: calcParteSocio('emi'),
     adj1: calcAdelantosSocio('juan'), adj2: calcAdelantosSocio('emi'),
@@ -672,7 +678,7 @@ function analisisMes(s) {
   const ritmo = corte ? s.ingresos / corte : 0;           // venta por día corrido
   const f = corte ? n / corte : 1;
   const ventasProj = s.ingresos * f;
-  const costosProj = (s.compras + s.sueldos) * f + s.fijos;
+  const costosProj = (s.compras + s.sueldos) * f + Math.max(s.fijos, s.fijosTotal || 0);
   const prev = mesAnteriorSnap();
   let comp = null;
   if (prev) {
@@ -730,7 +736,7 @@ function renderProyeccion(s, a) {
       ${kvRow('Días transcurridos', `${a.corte} de ${a.n}`)}
       ${a.comp ? kvRow(`${esc(a.comp.prev.nombre)} cerró en`, fmt(a.comp.prev.stats.ingresos)) : ''}
     </div>
-    <p class="form-hint mt-4">Proyecta ventas, gastos generales y sueldos al ritmo de lo que va del mes. Los gastos fijos se toman como están cargados.</p>`;
+    <p class="form-hint mt-4">Proyecta ventas, gastos generales y sueldos al ritmo de lo que va del mes. Los gastos fijos se toman completos, aunque falte pagar alguno.</p>`;
 }
 
 function renderComparacion(a) {
@@ -772,7 +778,7 @@ function renderMediosPago() {
   plats.forEach(row);
   data.ventas.forEach(v => (v.pagos || []).forEach(p => { if (p.plataforma && p.monto) row(p.plataforma).entro += Number(p.monto) || 0; }));
   const pago = g => { if (g.monto) row(g.medio || 'Sin especificar').salio += Number(g.monto) || 0; };
-  data.gastosGenerales.forEach(pago); data.gastosFijosDetalle.forEach(pago); (data.sueldosRegistros || []).forEach(pago);
+  data.gastosGenerales.forEach(pago); data.gastosFijosDetalle.filter(gfPagado).forEach(pago); (data.sueldosRegistros || []).forEach(pago);
   const list = Object.entries(rows).filter(([k, r]) => r.entro || r.salio || plats.includes(k));
   const tot = list.reduce((t, [, r]) => ({ entro: t.entro + r.entro, salio: t.salio + r.salio }), { entro: 0, salio: 0 });
   $('dash-medios').innerHTML = `<div class="table-wrap"><table>
@@ -994,7 +1000,7 @@ function renderBalance() {
   $('balance-panel-body').innerHTML = `<div class="kv">
       ${kvRow('Ingresos del mes', fmt(s.ingresos), 'text-green')}
       ${kvRow(`Gastos generales <button class="link-btn" onclick="navigateTo('gastosg')">ver</button>`, '− ' + fmt(s.compras))}
-      ${kvRow(`Gastos fijos <button class="link-btn" onclick="navigateTo('gastosf')">ver</button>`, '− ' + fmt(s.fijos))}
+      ${kvRow(`Gastos fijos ${s.fijosTotal > s.fijos ? `<span class="text-muted">(faltan ${fmt(s.fijosTotal - s.fijos)})</span> ` : ''}<button class="link-btn" onclick="navigateTo('gastosf')">ver</button>`, '− ' + fmt(s.fijos))}
       ${kvRow(`Sueldos <button class="link-btn" onclick="navigateTo('sueldos')">ver</button>`, '− ' + fmt(s.sueldos))}
       ${kvRow('Ganancia neta', fmt(s.neta), s.neta >= 0 ? 'text-green' : 'text-red', 'total')}
       ${kvRow(`Fondo común (${data.config.pctFondoComun}%)`, '− ' + fmt(s.fc), '', 'indent')}
@@ -1026,43 +1032,88 @@ function silentSaveBalance() {
 // 13. GASTOS FIJOS
 // ─────────────────────────────────────────────────────
 function renderGastosFijos() {
-  const total = data.gastosFijosDetalle.reduce((s, g) => s + (g.monto || 0), 0);
+  const list = data.gastosFijosDetalle;
+  const total = gfTotal(list), pagado = gfPagadoTotal(list), falta = total - pagado;
+  const nPag = list.filter(gfPagado).length;
+  const p = total ? pagado / total : 0;
   $('gastosf-kpis').innerHTML = [
-    kpi({ label: 'Total gastos fijos', icon: 'receipt', value: fmt(total), sub: `${data.gastosFijosDetalle.length} conceptos` }),
-    kpi({ label: 'Sobre ingresos', icon: 'pie', value: pct(total, data.balance.ventas), sub: 'Porcentaje de lo vendido' }),
+    kpi({ label: 'Total del mes', icon: 'receipt', value: fmt(total), sub: `${list.length} conceptos · ${pct(total, data.balance.ventas)} de lo vendido` }),
+    kpi({ label: 'Pagado', icon: 'check', value: fmt(pagado), sub: `${nPag} de ${list.length} pagados`, cls: 'green' }),
+    kpi({ label: 'Falta pagar', icon: 'alert', value: fmt(falta), sub: falta ? `${list.length - nPag} pendientes` : (list.length ? 'Todo pagado' : '—'), cls: falta ? 'red' : '' }),
   ].join('');
-  $('gastosf-tbody').innerHTML = data.gastosFijosDetalle.length ? data.gastosFijosDetalle.map(g => `
-    <tr>
-      <td>${esc(g.nombre)}</td>
-      <td>${medioBadge(g.medio)}</td>
+  $('gastosf-progress').innerHTML = list.length ? `
+    <div class="progress-label"><span><strong>${Math.round(p * 100)}%</strong> pagado</span><span>${fmt(pagado)} de ${fmt(total)}</span></div>
+    <div class="progress-bar eq-bar"><div class="progress-fill" style="width:${(p * 100).toFixed(1)}%;background:${p >= 1 ? 'var(--green)' : 'var(--brand)'}"></div></div>` : '';
+  const orden = [...list].sort((x, y) => gfPagado(x) - gfPagado(y));
+  $('gastosf-tbody').innerHTML = list.length ? orden.map(g => {
+    const ok = gfPagado(g);
+    const acts = `<div class="gf-acts">${ok
+        ? `<button class="btn btn-ghost btn-sm" onclick="desmarcarGastoFijo('${g.id}')" title="Volver a pendiente">${ic('undo', 'ic-sm')}Desmarcar</button>`
+        : `<button class="btn btn-success btn-sm" onclick="openPagarGastoFijo('${g.id}')">${ic('check', 'ic-sm')}Pagar</button>`}
+        ${rowActions(`editGastoFijo('${g.id}')`, `deleteGastoFijo('${g.id}')`)}</div>`;
+    return `<tr class="${ok ? 'gf-ok' : ''}">
+      <td class="fw-600">${esc(g.nombre)}</td>
       <td class="r fw-600">${fmt(g.monto)}</td>
-      <td class="r">${rowActions(`editGastoFijo('${g.id}')`, `deleteGastoFijo('${g.id}')`)}</td>
-    </tr>`).join('') : emptyRow(4, 'No hay gastos fijos cargados.');
-  $('gastosf-total').innerHTML = `<td colspan="2">Total</td><td class="r">${fmt(total)}</td><td></td>`;
+      <td>${ok
+        ? `<span class="badge badge-green">${ic('check', 'ic-sm')}Pagado</span> <span class="gf-det">${g.medio ? esc(g.medio) : 'Sin especificar'}${g.fechaPago ? ' · ' + formatDateShort(g.fechaPago) : ''}</span>`
+        : `<span class="badge badge-amber">Pendiente</span>`}<div class="show-sm gf-acts-m">${acts}</div></td>
+      <td class="r hide-sm">${acts}</td>
+    </tr>`;
+  }).join('') : emptyRow(4, 'No hay gastos fijos cargados. Agregá alquiler, cuotas, servicios… con su total del mes.');
+  $('gastosf-total').innerHTML = list.length ? `<td>Total</td><td class="r">${fmt(total)}</td><td colspan="2" class="gf-foot"><span class="text-green">${fmt(pagado)} pagado</span>${falta ? ` · <span class="text-red">${fmt(falta)} falta</span>` : ''}</td>` : '';
 }
 function openAddGastoFijoModal() {
   $('gf-edit-index').value = ''; $('gf-nombre').value = ''; $('gf-monto').value = '';
-  fillMedioSelect('gf-medio');
+  $('gf-pago-fields').style.display = 'none';
   openModal('modal-gastosf');
 }
 function editGastoFijo(id) {
   const g = data.gastosFijosDetalle.find(x => x.id === id);
   if (!g) return;
   $('gf-edit-index').value = id; $('gf-nombre').value = g.nombre; $('gf-monto').value = g.monto;
-  fillMedioSelect('gf-medio', g.medio || '');
+  const ok = gfPagado(g);
+  $('gf-pago-fields').style.display = ok ? '' : 'none';
+  if (ok) { fillMedioSelect('gf-medio', g.medio || ''); $('gf-fecha').value = g.fechaPago || ''; }
   openModal('modal-gastosf');
 }
 function saveGastoFijo() {
   const id = $('gf-edit-index').value;
   const nombre = $('gf-nombre').value.trim();
   const monto = num($('gf-monto').value);
-  const medio = $('gf-medio').value;
   if (!nombre) { showToast('Completá el concepto'); return; }
   const i = data.gastosFijosDetalle.findIndex(g => g.id === id);
-  if (i >= 0) data.gastosFijosDetalle[i] = { ...data.gastosFijosDetalle[i], nombre, monto, medio };
-  else data.gastosFijosDetalle.push({ id: uid(), nombre, monto, medio });
+  if (i >= 0) {
+    const g = { ...data.gastosFijosDetalle[i], nombre, monto };
+    if (gfPagado(g)) { g.medio = $('gf-medio').value; g.fechaPago = $('gf-fecha').value || g.fechaPago || ''; }
+    data.gastosFijosDetalle[i] = g;
+  } else data.gastosFijosDetalle.push({ id: uid(), nombre, monto, pagado: false });
   closeModal('modal-gastosf');
   saveData('Gasto fijo guardado');
+}
+function openPagarGastoFijo(id) {
+  const g = data.gastosFijosDetalle.find(x => x.id === id);
+  if (!g) return;
+  $('gfp-id').value = id;
+  $('gfp-nombre').textContent = g.nombre;
+  $('gfp-monto').value = g.monto || '';
+  fillMedioSelect('gfp-medio', g.medio && (data.config.plataformas || []).includes(g.medio) ? g.medio : undefined);
+  $('gfp-fecha').value = todayISO();
+  openModal('modal-gf-pagar');
+}
+function confirmarPagoGastoFijo() {
+  const i = data.gastosFijosDetalle.findIndex(g => g.id === $('gfp-id').value);
+  if (i < 0) return;
+  const monto = num($('gfp-monto').value);
+  if (!monto) { showToast('Poné el monto que pagaste'); return; }
+  data.gastosFijosDetalle[i] = { ...data.gastosFijosDetalle[i], monto, medio: $('gfp-medio').value, fechaPago: $('gfp-fecha').value || todayISO(), pagado: true };
+  closeModal('modal-gf-pagar');
+  saveData(`${data.gastosFijosDetalle[i].nombre}: pagado`);
+}
+function desmarcarGastoFijo(id) {
+  const i = data.gastosFijosDetalle.findIndex(g => g.id === id);
+  if (i < 0 || !confirm(`¿Volver "${data.gastosFijosDetalle[i].nombre}" a pendiente?`)) return;
+  data.gastosFijosDetalle[i] = { ...data.gastosFijosDetalle[i], pagado: false, fechaPago: '' };
+  saveData('Marcado como pendiente');
 }
 function deleteGastoFijo(id) {
   if (!confirm('¿Eliminar este gasto fijo?')) return;
@@ -2013,7 +2064,7 @@ function cerrarMes() {
     balance: { ventas: 0, compras: 0, gastosFijos: 0, sueldos: 0 },
     adelantos: [],
     fondoComun: [],
-    gastosFijosDetalle: mantenerFijos ? data.gastosFijosDetalle.map(g => ({ ...g, id: uid() })) : [],
+    gastosFijosDetalle: mantenerFijos ? data.gastosFijosDetalle.map(g => { const c = { ...g, id: uid(), pagado: false }; delete c.fechaPago; return c; }) : [],
     gastosGenerales: [],
     egresosGanancia: [],
     sueldosDetalle: clone(data.sueldosDetalle),
